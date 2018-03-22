@@ -43,6 +43,7 @@ describe IgnorableColumns do
     before do
       @test_model = Class.new(ActiveRecord::Base) do
         self.table_name = 'test_models'
+        has_many :things
       end
       @subclass = Class.new(@test_model)
 
@@ -56,6 +57,12 @@ describe IgnorableColumns do
         expect { @test_model.all }.to include_col_in_sql(:test_models, :name)
         expect { @test_model.all }.to include_col_in_sql(:test_models, :some_attributes)
         expect { @test_model.all }.to include_col_in_sql(:test_models, :legacy)
+        expect { @test_model.includes(:things) }.to include_col_in_sql(:test_models, :name)
+        expect { @test_model.includes(:things) }.to include_col_in_sql(:test_models, :some_attributes)
+        expect { @test_model.includes(:things) }.to include_col_in_sql(:test_models, :legacy)
+        expect { @test_model.eager_load(:things) }.to include_col_in_sql(:test_models, :name)
+        expect { @test_model.eager_load(:things) }.to include_col_in_sql(:test_models, :some_attributes)
+        expect { @test_model.eager_load(:things) }.to include_col_in_sql(:test_models, :legacy)
       end
     end
 

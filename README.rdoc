@@ -1,3 +1,24 @@
 = IgnorableColumns
 
-This project rocks and uses MIT-LICENSE.
+Motivation is to allow ignoring certain columns both at model level (columns/attributes) as well as database queries level.
+It works with +includes+ and +eager_load+ as well as simple queries.
+
+Tested on +Rails4+, should work on +Rails3+. Support for +Rails5+ to come in the future.
+
+== Example Usage
+
+  class Topic < ActiveRecord::Base
+   ignore_columns :attributes, :class
+   ignore_columns_in_sql # optional, can be useful for better performance
+  end
+
++ignore_columns+ must be defined before using +ignore_columns_in_sql+.
+
+To temporarily use the ignored columns:
+
+  Topic.with_ignored_columns { Topic.where(name: 'Data Rocks') }
+  Topic.with_ignored_columns do
+    Topic.where(name: 'Data Rocks')
+  end
+
+Inspired by https://github.com/nthj/ignorable

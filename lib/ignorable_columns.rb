@@ -41,10 +41,8 @@ module IgnorableColumns
 
     # Ignore columns for select statements.
     # Useful for optimizing queries that load large amounts of rarely data.
-    # Exclude ignored columns from the sql queries and optionally other columns.
-    # If no argument is provided it removes all ignored columns.
-    # NOTE: should be called after #ignore_columns and the arguments should be
-    #       from the list of ignored columns
+    # Exclude ignored columns from the sql queries.
+    # NOTE: should be called after #ignore_columns
     #
     #   class Topic < ActiveRecord::Base
     #     ignore_columns :attributes, :class
@@ -93,7 +91,7 @@ module IgnorableColumns
       end
     end
 
-    def column_names
+    def column_names # :nodoc:
       if @all_column_names
         @column_names ||= @all_column_names.reject { |col| ignored_column?(col) }
       else
@@ -102,11 +100,11 @@ module IgnorableColumns
       end
     end
 
-    def include_columns?
+    def include_columns? # :nodoc:
       @include_columns
     end
 
-    def included_columns
+    def included_columns # :nodoc:
       @included_columns
     end
 
