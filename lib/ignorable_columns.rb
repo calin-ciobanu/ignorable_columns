@@ -33,14 +33,15 @@ module IgnorableColumns
     def ignore_columns(*cols)
       self.ignored_columns ||= []
       self.ignored_columns += cols.map(&:to_s)
-      reset_columns
       self.ignored_columns.tap(&:uniq!)
+      reset_columns
+      columns
     end
     alias ignore_column ignore_columns
 
-    # Ignore columns fro select statements.
-    # Useful for optimizing queries that load large amounts of unused data.
-    # Exclude one or more of the ignored columns from the sql queries.
+    # Ignore columns for select statements.
+    # Useful for optimizing queries that load large amounts of rarely data.
+    # Exclude ignored columns from the sql queries and optionally other columns.
     # If no argument is provided it removes all ignored columns.
     # NOTE: should be called after #ignore_columns and the arguments should be
     #       from the list of ignored columns
@@ -49,16 +50,10 @@ module IgnorableColumns
     #     ignore_columns :attributes, :class
     #     ignore_columns_in_sql
     #   end
-    def ignore_columns_in_sql(*cols)
+    def ignore_columns_in_sql
       return unless ignored_columns.present?
-      columns
-      @sql_columns = cols
       @orig_default_scopes ||= default_scopes
-
-      excluded = ignored_columns
-      excluded &= cols if cols.present?
-
-      default_scope { select(*(@all_columns.map(&:name) - excluded)) }
+      default_scope { select(*(all_columns.map(&:name) - ignored_columns)) }
     end
     alias ignore_column_in_sql ignore_columns_in_sql
 
@@ -81,6 +76,7 @@ module IgnorableColumns
     #   end
     #   ...
     #   Topic.with_ignored_columns { Topic.last(5).map(&:attributes) }
+    #   Topic.with_ignored_columns(:class) { Topic.last(5).map(&:attributes) }
     def with_ignored_columns(*cols)
       toggle_columns true, cols
       yield
@@ -89,13 +85,21 @@ module IgnorableColumns
     end
 
     def columns # :nodoc:
-      @all_columns ||= super
-      @columns ||= super.reject { |col| ignored_column?(col) }
+      if @all_columns
+        @columns ||= super.reject { |col| ignored_column?(col) }
+      else
+        @all_columns = super
+        @columns = super.reject { |col| ignored_column?(col) }
+      end
     end
 
     def column_names
-      @all_column_names ||= super
-      @column_names ||= super.reject { |col| ignored_column?(col) }
+      if @all_column_names
+        @column_names ||= @all_column_names.reject { |col| ignored_column?(col) }
+      else
+        @all_column_names = all_columns.map(&:name)
+        @column_names = @all_column_names.reject { |col| ignored_column?(col) }
+      end
     end
 
     def include_columns?
@@ -108,10 +112,24 @@ module IgnorableColumns
 
     private
 
+    def all_columns
+      columns unless @all_columns
+      @all_columns
+    end
+
+    def all_column_names
+      column_names unless @all_column_names
+      @all_column_names
+    end
+
+    def orig_default_scopes
+      @orig_default_scopes || []
+    end
+
     def init_columns(col_names = nil)
       reset_columns
-      @columns = col_names.nil? ? @all_columns : @all_columns.select { |c| col_names.include? c.name }
-      @column_names = col_names.nil? ? @all_column_names : @all_column_names.select { |cn| col_names.include? cn }
+      @columns = col_names.nil? ? all_columns : all_columns.select { |c| col_names.include? c.name }
+      @column_names = col_names.nil? ? all_column_names : all_column_names.select { |cn| col_names.include? cn }
     end
 
     def reset_columns
@@ -122,21 +140,22 @@ module IgnorableColumns
     end
 
     def toggle_columns(on, cols = [])
+      cols = cols.map(&:to_s)
       if on
-        @columns = nil
+        reset_columns
         filtered_columns = columns
         @included_columns = (ignored_columns & cols if cols.present?)
         @included_columns ||= ignored_columns
         new_column_names = filtered_columns.map(&:name) + @included_columns
         init_columns(new_column_names)
-        self.default_scopes = @orig_default_scopes
+        self.default_scopes = orig_default_scopes
         default_scope { select(*new_column_names) }
         @include_columns = true
       else
         @include_columns = false
         reset_columns
-        self.default_scopes = @orig_default_scopes
-        ignore_columns_in_sql(*@sql_columns)
+        self.default_scopes = orig_default_scopes
+        ignore_columns_in_sql
       end
     end
   end
