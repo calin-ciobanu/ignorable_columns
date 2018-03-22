@@ -8,7 +8,7 @@ Tested on +Rails4+, should work on +Rails3+. Support for +Rails5+ to come in the
 == Example Usage
 
   class Topic < ActiveRecord::Base
-   ignore_columns :attributes, :class
+   ignore_columns :attributes, :class, :name
    ignore_columns_in_sql # optional, can be useful for better performance
   end
 
@@ -16,8 +16,8 @@ Tested on +Rails4+, should work on +Rails3+. Support for +Rails5+ to come in the
 
 To temporarily use the ignored columns:
 
-  Topic.with_ignored_columns { Topic.where(name: 'Data Rocks') }
-  Topic.with_ignored_columns do
+  Topic.including_ignored_columns { Topic.where(name: 'Data Rocks') }
+  Topic.including_ignored_columns(:name) do
     Topic.where(name: 'Data Rocks')
   end
 

@@ -73,9 +73,9 @@ module IgnorableColumns
     #     ignore_columns_in_sql
     #   end
     #   ...
-    #   Topic.with_ignored_columns { Topic.last(5).map(&:attributes) }
-    #   Topic.with_ignored_columns(:class) { Topic.last(5).map(&:attributes) }
-    def with_ignored_columns(*cols)
+    #   Topic.including_ignored_columns { Topic.last(5).map(&:attributes) }
+    #   Topic.including_ignored_columns(:class) { Topic.last(5).map(&:attributes) }
+    def including_ignored_columns(*cols)
       toggle_columns true, cols
       yield
     ensure
