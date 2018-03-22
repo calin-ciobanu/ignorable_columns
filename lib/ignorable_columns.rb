@@ -32,7 +32,7 @@ module IgnorableColumns
     #   Topic.new.respond_to?(:attributes) => false
     def ignore_columns(*cols)
       self.ignored_columns ||= []
-      self.ignored_columns += cols.map(&:to_s)
+      self.ignored_columns += (cols || []).map(&:to_s)
       self.ignored_columns.tap(&:uniq!)
       reset_columns
       columns
@@ -49,8 +49,8 @@ module IgnorableColumns
     #     ignore_columns_in_sql
     #   end
     def ignore_columns_in_sql
-      return unless ignored_columns.present?
       @orig_default_scopes ||= default_scopes
+      self.default_scopes = @orig_default_scopes and return unless ignored_columns.present?
       default_scope { select(*(all_columns.map(&:name) - ignored_columns)) }
     end
     alias ignore_column_in_sql ignore_columns_in_sql
@@ -143,7 +143,7 @@ module IgnorableColumns
         reset_columns
         filtered_columns = columns
         @included_columns = (ignored_columns & cols if cols.present?)
-        @included_columns ||= ignored_columns
+        @included_columns ||= ignored_columns || []
         new_column_names = filtered_columns.map(&:name) + @included_columns
         init_columns(new_column_names)
         self.default_scopes = orig_default_scopes

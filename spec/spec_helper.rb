@@ -13,10 +13,6 @@ RSpec::Matchers.define :include_col_in_sql do |table, column|
     @select_queries.present?
   end
 
-  failure_message do |actual|
-    "expected that #{actual} would contain column #{column} from table #{table}. Queries were: #{@select_queries}"
-  end
-
   def supports_block_expectations?
     true
   end
