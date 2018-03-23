@@ -76,10 +76,14 @@ module IgnorableColumns
     #   Topic.including_ignored_columns { Topic.last(5).map(&:attributes) }
     #   Topic.including_ignored_columns(:class) { Topic.last(5).map(&:attributes) }
     def including_ignored_columns(*cols)
-      toggle_columns true, cols
-      yield
-    ensure
-      toggle_columns false
+      mutex.synchronize do
+        begin
+          toggle_columns true, cols
+          yield
+        ensure
+          toggle_columns false
+        end
+      end
     end
 
     def columns # :nodoc:
@@ -155,6 +159,10 @@ module IgnorableColumns
         self.default_scopes = orig_default_scopes
         ignore_columns_in_sql
       end
+    end
+
+    def mutex
+      @mutex ||= Mutex.new
     end
   end
 
