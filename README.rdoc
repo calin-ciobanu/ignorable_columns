@@ -3,22 +3,99 @@
 Motivation is to allow ignoring certain columns both at model level (columns/attributes) as well as database queries level.
 It works with +includes+ and +eager_load+ as well as simple queries.
 
-Tested on +Rails4+, should work on +Rails3+. Support for +Rails5+ to come in the future.
+Tested on +Rails4+, should work on +Rails3+. Not tested on +Rails5+.
 
 == Example Usage
 
   class Topic < ActiveRecord::Base
-   ignore_columns :attributes, :class, :name
-   ignore_columns_in_sql # optional, can be useful for better performance
+    ignore_columns :name, :body, :timezone
+    ignore_columns_in_sql # optional, recommended for better performance
   end
 
 +ignore_columns+ must be defined before using +ignore_columns_in_sql+.
 
 To temporarily use the ignored columns:
 
-  Topic.including_ignored_columns { Topic.where(name: 'Data Rocks') }
-  Topic.including_ignored_columns(:name) do
-    Topic.where(name: 'Data Rocks')
+  Topic.including_ignored_columns.where(name: 'Data Rocks')
+  Topic.including_ignored_columns(:name).where(name: 'Data Rocks')
+
+For use with relations see below example:
+
+=== Has many
+
+  class Topic < ActiveRecord::Base
+    ignore_columns :name, :body, :timezone
+    ignore_columns_in_sql # optional, recommended for better performance
+
+    belongs_to :author
+    belongs_to :author_with_location, class_name: Author.including_ignored_columns(:location), foreign_key: 'topic_id'
   end
+
+  class Author < ActiveRecord::Base
+    ignore_columns :location, :updated_at
+    ignore_columns_in_sql # optional, recommended for better performance
+
+    has_many :topics
+    has_many :topics_with_body, class_name: Topic.including_ignored_columns(:body).name
+    has_many :topics_with_all, class_name: Topic.including_ignored_columns.name
+  end
+
+  Author.last.topics_with_body
+  Topic.where(name: 'MyTopic').author_with_location
+  Author.includes(:topics_with_all).last.topics_with_all
+  Author.eager_load(:topics_with_all).last.topics_with_all
+
+=== Self Referential
+
+  class Topic < ActiveRecord::Base
+    ignore_columns :name, :body, :timezone
+    ignore_columns_in_sql # optional, recommended for better performance
+
+    belongs_to :parent_topic, class_name: Topic.name
+    has_many :child_topics, class_name: Topic.name, foreign_key: 'parent_id'
+
+    belongs_to :parent_topic_with_all, class_name: Topic.including_ignored_columns.name
+    has_many :child_topics_with_all, class_name: Topic.including_ignored_columns.name, foreign_key: 'parent_id'
+  end
+
+  Topic.where(name: 'MyTopic').child_topics_with_all
+
+=== Many to many
+
+  class Topic < ActiveRecord::Base
+    ignore_columns :name, :body, :timezone
+    ignore_columns_in_sql # optional, recommended for better performance
+
+    has_many :author_topics
+    has_many :authors, through: :author_topics
+  end
+
+  class Author < ActiveRecord::Base
+    ignore_columns :location, :updated_at
+    ignore_columns_in_sql # optional, recommended for better performance
+
+    has_many :author_topics
+    has_many :topics, through: :author_topics
+  end
+
+  class AuthorTopic < ActiveRecord::Base
+    belongs_to :author
+    belongs_to :topic
+
+    belongs_to :authors_with_location, class_name: Author.including_ignored_columns(:location).name, foreign_key: 'author_id'
+  end
+
+  Topic.where(name: 'MyTopic').last.authors_with_location
+
+== Limitations
+- does not support has and belongs to many relations
+- does not support polymorphic relations
+- because of the ActiveRecord implementation when using +count+ it should be used as <tt>count(:all)</tt>
+(else a middleware could be implemented but it is out of the scope of this gem)
+
+== TO DO
+1. specs for relations other than has many
+2. test with rails 5
+3. examples (and / or another gem) for use with graphql
 
 Inspired by https://github.com/nthj/ignorable

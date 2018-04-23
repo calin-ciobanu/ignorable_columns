@@ -38,17 +38,17 @@ describe IgnorableColumns do
   end
 
   let(:test_model) do
-    Class.new(ActiveRecord::Base) do
+    Object.const_set("TestModel_#{(Time.now.to_f * 10**6).to_i}", Class.new(ActiveRecord::Base) do
       self.table_name = 'test_models'
-    end
+    end)
   end
   let(:sub_test_model) do
-    Class.new(test_model)
+    Object.const_set("SubTestModel_#{(Time.now.to_f * 10**6).to_i}", Class.new(test_model))
   end
   let(:thing) do
-    Class.new(ActiveRecord::Base) do
+    Object.const_set("Thing_#{(Time.now.to_f * 10**6).to_i}", Class.new(ActiveRecord::Base) do
       self.table_name = 'things'
-    end
+    end)
   end
 
   describe '#ignore_columns_in_sql' do
@@ -56,7 +56,7 @@ describe IgnorableColumns do
       before do
         test_model.ignore_columns
         test_model.ignore_columns_in_sql
-        TestModel.ignored_columns = []
+        TestModel.ignorable_columns = []
         TestModel.ignore_columns_in_sql
       end
 
@@ -77,8 +77,8 @@ describe IgnorableColumns do
       before do
         test_model.ignore_columns :name, :some_attributes
         test_model.ignore_columns_in_sql
-        TestModel.ignored_columns = []
-        TestModel.ignore_column :name, :some_attributes
+        TestModel.ignorable_columns = []
+        TestModel.ignore_columns :name, :some_attributes
         TestModel.ignore_columns_in_sql
       end
 
@@ -102,11 +102,9 @@ describe IgnorableColumns do
       end
 
       it 'should query all columns' do
-        test_model.including_ignored_columns do
-          expect { test_model.all }.to include_col_in_sql(:test_models, :name)
-          expect { test_model.all }.to include_col_in_sql(:test_models, :some_attributes)
-          expect { test_model.all }.to include_col_in_sql(:test_models, :legacy)
-        end
+        expect { test_model.including_ignored_columns.all }.to include_col_in_sql(:test_models, :name)
+        expect { test_model.including_ignored_columns.all }.to include_col_in_sql(:test_models, :some_attributes)
+        expect { test_model.including_ignored_columns.all }.to include_col_in_sql(:test_models, :legacy)
       end
     end
 
@@ -117,11 +115,9 @@ describe IgnorableColumns do
       end
 
       it 'should query all columns' do
-        test_model.including_ignored_columns(:name) do
-          expect { test_model.all }.to include_col_in_sql(:test_models, :name)
-          expect { test_model.all }.not_to include_col_in_sql(:test_models, :some_attributes)
-          expect { test_model.all }.to include_col_in_sql(:test_models, :legacy)
-        end
+        expect { test_model.including_ignored_columns(:name).all }.to include_col_in_sql(:test_models, :name)
+        expect { test_model.including_ignored_columns(:name).all }.not_to include_col_in_sql(:test_models, :some_attributes)
+        expect { test_model.including_ignored_columns(:name).all }.to include_col_in_sql(:test_models, :legacy)
       end
     end
   end
@@ -169,22 +165,16 @@ describe IgnorableColumns do
       context 'when ignore_columns is called before the columns are loaded' do
         it 'should readds the columns from the class' do
           expect(
-            test_model.including_ignored_columns do
-              test_model.columns.map(&:name)
-            end
+            test_model.including_ignored_columns.columns.map(&:name)
           ).to match_array %w[id legacy some_attributes name]
           expect(
-            thing.including_ignored_columns do
-              thing.columns.map(&:name)
-            end
+            thing.including_ignored_columns.columns.map(&:name)
           ).to match_array %w[id test_model_id value updated_at created_at]
         end
 
         it 'readds columns from the subclass' do
           expect(
-            sub_test_model.including_ignored_columns do
-              sub_test_model.columns.map(&:name)
-            end
+            sub_test_model.including_ignored_columns.columns.map(&:name)
           ).to match_array(%w[id legacy some_attributes name])
         end
       end
@@ -198,17 +188,13 @@ describe IgnorableColumns do
 
         it 'readds columns from the class' do
           expect(
-            test_model.including_ignored_columns do
-              test_model.columns.map(&:name)
-            end
+            test_model.including_ignored_columns.columns.map(&:name)
           ).to match_array(%w[id legacy some_attributes name])
         end
 
         it 'readds columns from the subclass' do
           expect(
-            sub_test_model.including_ignored_columns do
-              sub_test_model.columns.map(&:name)
-            end
+            sub_test_model.including_ignored_columns.columns.map(&:name)
           ).to match_array(%w[id legacy some_attributes name])
         end
       end
@@ -225,22 +211,16 @@ describe IgnorableColumns do
       context 'when ignore_columns is called before the columns are loaded' do
         it 'should remove the columns from the class' do
           expect(
-            test_model.including_ignored_columns(:some_attributes) do
-              test_model.columns.map(&:name)
-            end
+            test_model.including_ignored_columns(:some_attributes).columns.map(&:name)
           ).to match_array %w[id some_attributes name]
           expect(
-            thing.including_ignored_columns(:created_at) do
-              thing.columns.map(&:name)
-            end
+            thing.including_ignored_columns(:created_at).columns.map(&:name)
           ).to match_array %w[id test_model_id value created_at]
         end
 
         it 'removes columns from the subclass' do
           expect(
-            sub_test_model.including_ignored_columns(:some_attributes) do
-              sub_test_model.columns.map(&:name)
-            end
+            sub_test_model.including_ignored_columns(:some_attributes).columns.map(&:name)
           ).to match_array(%w[id some_attributes name])
         end
       end
@@ -254,17 +234,13 @@ describe IgnorableColumns do
 
         it 'removes columns from the class' do
           expect(
-            test_model.including_ignored_columns(:some_attributes) do
-              test_model.columns.map(&:name)
-            end
+            test_model.including_ignored_columns(:some_attributes).columns.map(&:name)
           ).to match_array(%w[id some_attributes name])
         end
 
         it 'removes columns from the subclass' do
           expect(
-            sub_test_model.including_ignored_columns(:some_attributes) do
-              sub_test_model.columns.map(&:name)
-            end
+            sub_test_model.including_ignored_columns(:some_attributes).columns.map(&:name)
           ).to match_array(%w[id some_attributes name])
         end
       end
@@ -315,22 +291,16 @@ describe IgnorableColumns do
       context 'when ignore_columns is called before the columns are loaded' do
         it 'should readds the columns from the class' do
           expect(
-            test_model.including_ignored_columns do
-              test_model.column_names
-            end
+            test_model.including_ignored_columns.column_names
           ).to match_array %w[id legacy some_attributes name]
           expect(
-            thing.including_ignored_columns do
-              thing.column_names
-            end
+            thing.including_ignored_columns.column_names
           ).to match_array %w[id test_model_id value updated_at created_at]
         end
 
         it 'readds columns from the subclass' do
           expect(
-            sub_test_model.including_ignored_columns do
-              sub_test_model.column_names
-            end
+            sub_test_model.including_ignored_columns.column_names
           ).to match_array(%w[id legacy some_attributes name])
         end
       end
@@ -344,17 +314,13 @@ describe IgnorableColumns do
 
         it 'readds columns from the class' do
           expect(
-            test_model.including_ignored_columns do
-              test_model.column_names
-            end
+            test_model.including_ignored_columns.column_names
           ).to match_array(%w[id legacy some_attributes name])
         end
 
         it 'readds columns from the subclass' do
           expect(
-            sub_test_model.including_ignored_columns do
-              sub_test_model.column_names
-            end
+            sub_test_model.including_ignored_columns.column_names
           ).to match_array(%w[id legacy some_attributes name])
         end
       end
@@ -369,22 +335,16 @@ describe IgnorableColumns do
 
         it 'should remove the columns from the class' do
           expect(
-            test_model.including_ignored_columns(:some_attributes) do
-              test_model.column_names
-            end
+            test_model.including_ignored_columns(:some_attributes).column_names
           ).to match_array %w[id some_attributes name]
           expect(
-            thing.including_ignored_columns(:created_at) do
-              thing.column_names
-            end
+            thing.including_ignored_columns(:created_at).column_names
           ).to match_array %w[id test_model_id value created_at]
         end
 
         it 'removes columns from the subclass' do
           expect(
-            sub_test_model.including_ignored_columns(:some_attributes) do
-              sub_test_model.column_names
-            end
+            sub_test_model.including_ignored_columns(:some_attributes).column_names
           ).to match_array(%w[id some_attributes name])
         end
       end
@@ -398,17 +358,13 @@ describe IgnorableColumns do
 
         it 'removes columns from the class' do
           expect(
-            test_model.including_ignored_columns(:some_attributes) do
-              test_model.column_names
-            end
+            test_model.including_ignored_columns(:some_attributes).column_names
           ).to match_array(%w[id some_attributes name])
         end
 
         it 'removes columns from the subclass' do
           expect(
-            sub_test_model.including_ignored_columns(:some_attributes) do
-              sub_test_model.column_names
-            end
+            sub_test_model.including_ignored_columns(:some_attributes).column_names
           ).to match_array(%w[id some_attributes name])
         end
       end
@@ -418,10 +374,10 @@ describe IgnorableColumns do
   describe '#attributes' do
     before do
       test_model.ignore_columns :some_attributes, :legacy
-      TestModel.ignored_columns = []
+      TestModel.ignorable_columns = []
       TestModel.ignore_columns :some_attributes, :legacy
       thing.ignore_column :updated_at, :created_at
-      Thing.ignored_columns = []
+      Thing.ignorable_columns = []
       Thing.ignore_column :updated_at, :created_at
     end
 
@@ -486,14 +442,10 @@ describe IgnorableColumns do
     context 'when with all including_ignored_columns' do
       it 'should readd the columns from the attributes hash' do
         expect(
-          test_model.including_ignored_columns do
-            test_model.new.attributes.keys
-          end
+          test_model.including_ignored_columns.new.attributes.keys
         ).to match_array %w[id name legacy some_attributes]
         expect(
-          thing.including_ignored_columns do
-            thing.new.attributes.keys
-          end
+          thing.including_ignored_columns.new.attributes.keys
         ).to match_array %w[id test_model_id value updated_at created_at]
       end
 
@@ -570,14 +522,10 @@ describe IgnorableColumns do
     context 'when with some including_ignored_columns' do
       it 'should readd the columns from the attributes hash' do
         expect(
-          test_model.including_ignored_columns(:legacy) do
-            test_model.new.attributes.keys
-          end
+          test_model.including_ignored_columns(:legacy).new.attributes.keys
         ).to match_array %w[id name legacy]
         expect(
-          thing.including_ignored_columns(:updated_at) do
-            thing.new.attributes.keys
-          end
+          thing.including_ignored_columns(:updated_at).new.attributes.keys
         ).to match_array %w[id test_model_id value updated_at]
       end
 
