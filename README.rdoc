@@ -28,7 +28,7 @@ For use with relations see below example:
     ignore_columns_in_sql # optional, recommended for better performance
 
     belongs_to :author
-    belongs_to :author_with_location, class_name: Author.including_ignored_columns(:location), foreign_key: 'topic_id'
+    belongs_to :author_with_location, class_name: Author.including_ignored_columns(:location).name, foreign_key: 'topic_id'
   end
 
   class Author < ActiveRecord::Base
@@ -95,7 +95,8 @@ For use with relations see below example:
 
 == TO DO
 1. specs for relations other than has many
-2. test with rails 5
-3. examples (and / or another gem) for use with graphql
+2. specs for concurrency
+3. support for rails 5
+4. examples (and / or another gem) for use with graphql
 
 Inspired by https://github.com/nthj/ignorable

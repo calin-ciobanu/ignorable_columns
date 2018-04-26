@@ -83,7 +83,7 @@ module IgnorableColumns
       if including_columns_subclass_cache[sy_cols].present?
         return including_columns_subclass_cache[sy_cols]
       else
-        subclass_name = generate_subclass_name(st_cols)
+        subclass_name = including_ignored_columns_subclass_name(st_cols)
         begin
           including_columns_subclass_cache[sy_cols] = Object.const_get(subclass_name)
           return including_columns_subclass_cache[sy_cols]
@@ -124,17 +124,17 @@ module IgnorableColumns
       self.default_scopes = orig_default_scopes
     end
 
-    private
-
-    def generate_subclass_name(cols)
+    def including_ignored_columns_subclass_name(cols = nil)
       subclass_name = name + 'With'
       subclass_name += if cols.present?
-                         cols.map(&:camelcase).join
+                         cols.sort.map(&:camelcase).join
                        else
                          'All'
                        end
       subclass_name
     end
+
+    private
 
     def generate_subclass_for_ignored_cols(name, st_cols)
       new_subclass = Object.const_set(name, Class.new(self))
