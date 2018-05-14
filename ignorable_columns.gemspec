@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.description = "Inspired by ignorable gem with support for sql queries ignore columns and bypass ignored columns on demand"
   s.license     = "MIT"
 
-  s.add_runtime_dependency 'activerecord', '>= 3', '< 5'
+  s.add_runtime_dependency 'activerecord', '>= 5'#, '< 5'
   s.add_development_dependency 'sqlite3'
   s.add_development_dependency 'rake'
   s.add_development_dependency 'rspec', '>= 3'

@@ -4,19 +4,15 @@ require 'active_support/core_ext/class/attribute'
 module IgnorableColumns
   module InstanceMethods
     def attributes # :nodoc:
-      if self.class.include_columns?
-        super.reject { |col, _val| self.class.ignored_column?(col) && !self.class.included_columns.include?(col) }
-      else
-        super.reject { |col, _val| self.class.ignored_column?(col) }
-      end
+      return super unless self.class.ignorable_columns
+      @attributes ||= self.class.attributes
+      byebug
+      @attributes.to_hash.reject { |col, _val| self.class.ignored_column?(col) }
     end
 
     def attribute_names # :nodoc:
-      if self.class.include_columns?
-        super.reject { |col| self.class.ignored_column?(col) && !self.class.included_columns.include?(col) }
-      else
-        super.reject { |col| self.class.ignored_column?(col) }
-      end
+      return super unless self.class.ignorable_columns
+      super.reject { |col| self.class.ignored_column?(col) }
     end
   end
 
@@ -36,6 +32,18 @@ module IgnorableColumns
       self.ignorable_columns.tap(&:uniq!)
       reset_columns
       columns
+      if @all_attributes
+        @attributes ||= ActiveModel::AttributeSet.new(
+          @all_attributes.except(
+            *(ignorable_columns - (included_columns || [])))
+        )
+      else
+        @all_attributes = @default_attributes
+        @default_attributes = @attributes = ActiveModel::AttributeSet.new(
+          @all_attributes.except(
+            *(ignorable_columns - (included_columns || [])))
+        )
+      end
     end
     alias ignore_column ignore_columns
 
@@ -61,9 +69,10 @@ module IgnorableColumns
     # Accepts both ActiveRecord::ConnectionAdapter::Column objects,
     # and actual column names ('title')
     def ignored_column?(column)
-      self.ignorable_columns.present? && self.ignorable_columns.include?(
-        column.respond_to?(:name) ? column.name : column.to_s
-      )
+      matcher = column.respond_to?(:name) ? column.name : column.to_s
+      self.ignorable_columns.present? &&
+        !(self.included_columns && self.included_columns.include?(matcher)) &&
+        self.ignorable_columns.include?(matcher)
     end
 
     # Execute block in a scope including all or some of the ignored columns.
@@ -94,6 +103,7 @@ module IgnorableColumns
     end
 
     def columns # :nodoc:
+      return super unless ignorable_columns
       if @all_columns
         @columns ||= super.reject { |col| ignored_column?(col) }
       else
@@ -103,12 +113,23 @@ module IgnorableColumns
     end
 
     def column_names # :nodoc:
+      return super unless ignorable_columns
       if @all_column_names
         @column_names ||= @all_column_names.reject { |col| ignored_column?(col) }
       else
         @all_column_names = all_columns.map(&:name)
         @column_names = @all_column_names.reject { |col| ignored_column?(col) }
       end
+    end
+
+    def attribute_types
+      return super unless ignorable_columns
+      @attribute_types = super.reject { |col| ignored_column?(col) }
+    end
+
+    def columns_hash
+      return super unless ignorable_columns
+      @columns_hash = super.reject { |col| ignored_column?(col) }
     end
 
     def include_columns? # :nodoc:
@@ -133,8 +154,6 @@ module IgnorableColumns
                        end
       subclass_name
     end
-
-    private
 
     def generate_subclass_for_ignored_cols(name, st_cols)
       new_subclass = Object.const_set(name, Class.new(self))
